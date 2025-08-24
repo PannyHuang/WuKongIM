@@ -15,8 +15,8 @@ WORKDIR /go/release/demo
 ADD demo .
 
 #------ 编译chatdemo ------
-WORKDIR /go/release/demo/chatdemo
-RUN yarn install && yarn build
+# WORKDIR /go/release/demo/chatdemo
+# RUN yarn install && yarn build
 
 # 编译前端 monitor
 WORKDIR /go/release/web
