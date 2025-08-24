@@ -1,9 +1,10 @@
 global:
   scrape_interval:     10s 
   evaluation_interval: 10s 
+
 scrape_configs:
-  - job_name: wukongim1-trace-metrics
+  - job_name: wukongim-metrics # 你可以自定义job_name
     static_configs:
-    - targets: ['wukongim:5300']
+    - targets: ['wukongim.zeabur.internal:5300']
       labels:
         id: "1001"
