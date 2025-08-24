@@ -62,7 +62,10 @@ WORKDIR /home
 COPY --from=build /go/release/app /home
 
 # 复制配置文件（确认仓库路径是 config/wk.yaml）
-COPY --from=build /go/release/config/wk.yaml /root/wukongim/wk.yaml
+COPY --from=build /go/release/wukongim/config/wk.yaml /root/wukongim/wk.yaml
+
+# 调试：输出文件结构（构建时查看日志，确认 wk.yaml 被复制）
+RUN ls -la /root/wukongim || echo "wk.yaml not copied!"
 
 # ENTRYPOINT 不变
 ENTRYPOINT ["/home/app", "--config=/root/wukongim/wk.yaml", "--ignoreMissingConfig=true"]
