@@ -59,13 +59,12 @@ COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certifica
 RUN mkdir -p /root/wukongim
 
 WORKDIR /home
+# 复制构建的可执行文件
 COPY --from=build /go/release/app /home
-
-# 复制配置文件（确认仓库路径是 config/wk.yaml）
-COPY --from=build /go/release/wukongim/config/wk.yaml /root/wukongim/wk.yaml
-
+# 复制正确的 wk.yaml 文件（基于你确认的路径：config/wk.yaml）
+COPY --from=build /go/release/config/wk.yaml /root/wukongim/wk.yaml
 # 调试：输出文件结构（构建时查看日志，确认 wk.yaml 被复制）
-RUN ls -la /root/wukongim || echo "wk.yaml not copied!"
-
-# ENTRYPOINT 不变
+RUN ls -la /go/release/config || echo "config/ directory not found in build stage!"
+RUN ls -la /root/wukongim || echo "wk.yaml not copied to prod stage!"
+# ENTRYPOINT：指定配置文件路径
 ENTRYPOINT ["/home/app", "--config=/root/wukongim/wk.yaml", "--ignoreMissingConfig=true"]
