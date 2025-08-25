@@ -51,13 +51,11 @@ RUN mkdir -p /app/config /home && chown -R appuser:appuser /app /home
 WORKDIR /home
 COPY --from=build --chown=appuser:appuser /go/release/app /home/app
 
-# 可选：复制 wk.yaml
+# 复制 wk.yaml（确保文件存在）
 COPY --from=build --chown=appuser:appuser /go/release/config/wk.yaml /app/config/wk.yaml
-
-# 调试：打印所有环境变量（在容器启动前）
-CMD ["/bin/sh", "-c", "echo 'Debug: Environment Variables:' && env && exec /home/app --ignoreMissingConfig=true"]
 
 # 切换到 non-root 用户
 USER appuser
 
-# ENTRYPOINT（保持纯 env 模式，但用 CMD 包裹调试）
+# ENTRYPOINT：调试打印 env，然后运行 app 并强制加载 wk.yaml
+ENTRYPOINT ["/bin/sh", "-c", "echo 'Debug: Environment Variables:' && env && exec /home/app --config=/app/config/wk.yaml --ignoreMissingConfig=true"]
