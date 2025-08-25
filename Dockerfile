@@ -34,13 +34,8 @@ RUN go mod download
 WORKDIR /go/release
 ADD . .
 
-# RUN CGO_ENABLED=0 GOOS=linux go build -ldflags='-w -extldflags "-static"' -o app main.go
-
-# RUN GIT_COMMIT=$(git rev-parse HEAD) && \
-#     GIT_COMMIT_DATE=$(git log --date=iso8601-strict -1 --pretty=%ct) && \
-#     GIT_VERSION=$(git describe --tags --abbrev=0) && \
-#     GIT_TREE_STATE=$(test -n "`git status --porcelain`" && echo "dirty" || echo "clean") && \
-#     CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -extldflags '-static' -X main.Commit=$GIT_COMMIT -X main.CommitDate=$GIT_COMMIT_DATE -X main.Version=$GIT_VERSION -X main.TreeState=$GIT_TREE_STATE" -installsuffix cgo  -o app ./main.go
+RUN go mod tidy
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags='-w -extldflags "-static"' -o app main.go
 
 RUN GIT_COMMIT=$(git rev-parse HEAD || echo "unknown") && \
     GIT_COMMIT_DATE=$(git log --date=iso8601-strict -1 --pretty=%ct || echo "0") && \
@@ -55,16 +50,21 @@ COPY --from=build /etc/passwd /etc/passwd
 COPY --from=build /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
 COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 
-# 创建配置目录（修复 "no such file or directory"）
-RUN mkdir -p /root/wukongim
+# 创建配置目录（non-root 路径）
+RUN mkdir -p /app/config && chmod 755 /app/config  # 权限：目录可读
 
 WORKDIR /home
-# 复制构建的可执行文件
 COPY --from=build /go/release/app /home
-# 复制正确的 wk.yaml 文件（基于你确认的路径：config/wk.yaml）
-COPY --from=build /go/release/config/wk.yaml /root/wukongim/wk.yaml
-# 调试：输出文件结构（构建时查看日志，确认 wk.yaml 被复制）
-RUN ls -la /go/release/config || echo "config/ directory not found in build stage!"
-RUN ls -la /root/wukongim || echo "wk.yaml not copied to prod stage!"
+
+# 复制 wk.yaml 到新路径，并设置权限
+COPY --from=build /go/release/config/wk.yaml /app/config/wk.yaml
+RUN chmod 644 /app/config/wk.yaml  # 确保文件可读（rw-r--r--）
+
+# 调试：输出 prod 阶段文件结构
+RUN ls -la /app  # 应该显示 config/
+RUN ls -la /app/config  # 应该显示 wk.yaml
+RUN ls -la /app/config/wk.yaml || echo "wk.yaml not copied to prod stage!"
+RUN cat /app/config/wk.yaml || echo "Failed to cat wk.yaml in prod stage!"  # 输出内容确认
+
 # ENTRYPOINT：指定配置文件路径
-ENTRYPOINT ["/home/app", "--config=/root/wukongim/wk.yaml", "--ignoreMissingConfig=true"]
+ENTRYPOINT ["/home/app", "--config=/app/config/wk.yaml", "--ignoreMissingConfig=true"]
