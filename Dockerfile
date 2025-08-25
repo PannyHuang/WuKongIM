@@ -45,26 +45,34 @@ RUN GIT_COMMIT=$(git rev-parse HEAD || echo "unknown") && \
 
 
 FROM alpine as prod
-# Import the user and group files from the builder.
+# Import the user and group files from the builder. (可选，但我们添加标准 non-root 用户)
 COPY --from=build /etc/passwd /etc/passwd
 COPY --from=build /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
 COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 
+# 添加 ca-certificates 和 tzdata（Alpine 需要）
+RUN apk --no-cache add ca-certificates tzdata
+
+# 创建 non-root 用户（安全最佳实践）
+RUN adduser -D -g '' appuser
+
 # 创建配置目录（non-root 路径）
-RUN mkdir -p /app/config && chmod 755 /app/config  # 权限：目录可读
+RUN mkdir -p /app/config /home && chown -R appuser:appuser /app /home
 
 WORKDIR /home
-COPY --from=build /go/release/app /home
+COPY --from=build --chown=appuser:appuser /go/release/app /home/app
 
-# 复制 wk.yaml 到新路径，并设置权限
-COPY --from=build /go/release/config/wk.yaml /app/config/wk.yaml
-RUN chmod 644 /app/config/wk.yaml  # 确保文件可读（rw-r--r--）
+# 可选：复制 wk.yaml（env vars 会覆盖它，无需使用）
+COPY --from=build --chown=appuser:appuser /go/release/config/wk.yaml /app/config/wk.yaml
 
-# 调试：输出 prod 阶段文件结构
+# 调试：输出 prod 阶段文件结构（保持原样）
 RUN ls -la /app  # 应该显示 config/
 RUN ls -la /app/config  # 应该显示 wk.yaml
 RUN ls -la /app/config/wk.yaml || echo "wk.yaml not copied to prod stage!"
 RUN cat /app/config/wk.yaml || echo "Failed to cat wk.yaml in prod stage!"  # 输出内容确认
 
-# ENTRYPOINT：指定配置文件路径
-ENTRYPOINT ["/home/app", "--config=/app/config/wk.yaml", "--ignoreMissingConfig=true"]
+# 切换到 non-root 用户
+USER appuser
+
+# ENTRYPOINT：移除 --config，纯靠环境变量配置（在 Zeabur 设置 WK_ 前缀 env vars）
+ENTRYPOINT ["/home/app", "--ignoreMissingConfig=true"]
