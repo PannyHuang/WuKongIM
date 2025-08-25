@@ -52,10 +52,10 @@ WORKDIR /home
 COPY --from=build --chown=appuser:appuser /go/release/app /home/app
 
 # 复制 wk.yaml（确保文件存在）
-COPY --from=build --chown=appuser:appuser /go/release/config/wk.yaml /app/config/wk.yaml
+# COPY --from=build --chown=appuser:appuser /go/release/config/wk.yaml /app/config/wk.yaml
 
 # 切换到 non-root 用户
 USER appuser
 
 # ENTRYPOINT：调试打印 env，然后运行 app 并强制加载 wk.yaml
-ENTRYPOINT ["/bin/sh", "-c", "echo 'Debug: Environment Variables:' && env && exec /home/app --config=/app/config/wk.yaml --ignoreMissingConfig=true"]
+ENTRYPOINT ["/bin/sh", "-c", "echo 'Debug: Environment Variables:' && env && exec /home/app --ignoreMissingConfig=true"]
